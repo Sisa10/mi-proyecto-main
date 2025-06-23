@@ -8,6 +8,8 @@ import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Search, Facebook, Twitter, Instagram, Youtube } from "lucide-react"
 import Link from "next/link"
+import axios from 'axios'
+
 
 export default function LoginPage() {
   const router = useRouter()
@@ -17,70 +19,50 @@ export default function LoginPage() {
     remember: false,
   })
   const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState<string>("")
+
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    setIsLoading(true)
 
-    // Validación básica
+    // Validación mínima
     if (!formData.email || !formData.password) {
-      alert("Por favor completa todos los campos")
-      setIsLoading(false)
+      setError("Por favor completa todos los campos")
       return
     }
 
-    try {
-      // Verificar si es un administrador (puedes cambiar esta lógica según tus necesidades)
-      const isAdmin = formData.email.includes("admin") || formData.email === "admin@main.com"
+    setIsLoading(true)
+    setError("")
 
-      // Simular llamada a API
-      const response = await fetch("/api/auth/login", {
+    try {
+      const response = await fetch("http://localhost:3000/auth/login", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          email: formData.email,
-          password: formData.password,
-          isAdmin: isAdmin,
+          correo_electronico: formData.email,
+          contraseña: formData.password,
         }),
       })
 
       if (response.ok) {
-        const data = await response.json()
+        const user = await response.json()
 
-        if (isAdmin) {
-          // Guardar token de administrador y redirigir al dashboard
-          localStorage.setItem("adminToken", data.token || "admin-token")
-          localStorage.setItem("userRole", "admin")
-          localStorage.setItem("userEmail", formData.email)
+        //if (user.role_id === 1) {
+          // Admin autorizado
+          //if (formData.remember) {
+            //localStorage.setItem("adminSession", JSON.stringify(user))
+          //}
           router.push("/admin/dashboard")
-        } else {
-          // Guardar token de usuario regular y redirigir al home
-          localStorage.setItem("userToken", data.token || "user-token")
-          localStorage.setItem("userRole", "user")
-          localStorage.setItem("userEmail", formData.email)
-          router.push("/")
-        }
+        //} else {
+        //  setError("Acceso denegado: Solo administradores pueden iniciar sesión aquí")
+        //}
       } else {
-        alert("Credenciales inválidas")
+        const data = await response.json()
+        setError(data.message || "Credenciales inválidas")
       }
-    } catch (error) {
-      console.error("Error en login:", error)
-      // Para desarrollo, simular login exitoso
-      const isAdmin = formData.email.includes("admin") || formData.email === "admin@main.com"
-
-      if (isAdmin) {
-        localStorage.setItem("adminToken", "admin-token-demo")
-        localStorage.setItem("userRole", "admin")
-        localStorage.setItem("userEmail", formData.email)
-        router.push("/admin/dashboard")
-      } else {
-        localStorage.setItem("userToken", "user-token-demo")
-        localStorage.setItem("userRole", "user")
-        localStorage.setItem("userEmail", formData.email)
-        router.push("/")
-      }
+    } catch (err) {
+      console.error("Error en login:", err)
+      setError("Error al conectar con el servidor")
     } finally {
       setIsLoading(false)
     }

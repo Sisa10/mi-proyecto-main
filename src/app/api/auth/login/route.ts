@@ -2,31 +2,31 @@ import { type NextRequest, NextResponse } from "next/server"
 
 export async function POST(request: NextRequest) {
   try {
-    const { email, password, isAdmin } = await request.json()
+    const { correo_electronico, contraseña, isAdmin } = await request.json()
 
     // Simulación de validación (reemplaza con tu lógica real)
     if (isAdmin) {
       // Validación para administradores
-      if (email.includes("admin") || email === "admin@main.com") {
+      if (correo_electronico.includes("admin") || correo_electronico === "admin@main.com") {
         return NextResponse.json({
           success: true,
           token: "admin-jwt-token-here",
           user: {
             id: 1,
-            email,
+            correo_electronico,
             role: "admin",
           },
         })
       }
     } else {
       // Validación para usuarios regulares
-      if (email && password) {
+      if (correo_electronico && contraseña) {
         return NextResponse.json({
           success: true,
           token: "user-jwt-token-here",
           user: {
             id: 2,
-            email,
+            correo_electronico,
             role: "user",
           },
         })

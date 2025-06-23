@@ -1,137 +1,79 @@
   "use client"
 
-  import { useState } from "react"
+  import { useEffect, useState } from "react"
   import { Input } from "@/components/ui/input"
   import { Button } from "@/components/ui/button"
   import { Search, Facebook, Twitter, Instagram, Youtube, ShoppingCart, Heart } from "lucide-react"
   import Link from "next/link"
   import Image from "next/image"
 
-  export default function HomePage() {
-    const [selectedColors, setSelectedColors] = useState<{ [key: string]: string }>({})
+  type Product = {
+  esRecomendado: unknown
+  esMasVendido: unknown
+  esDestacado: unknown
+  id: number
+  nombre: string
+  precio: number
+  categoria: { id: number, nombre: string }
+  marca: string
+  color: string[]
+  tallas: string[]
+  imagen_nombre_archivo?: string
+  }
+  
+  // Categorías para el filtro — si tu backend maneja otros IDs cámbialos aquí
+const categories = [
+  { id: "all", name: "Todos" },
+  { id: "1", name: "Mujeres" },
+  { id: "2", name: "Hombres" },
+  { id: "3", name: "Niñas" },
+  { id: "4", name: "Niños" },
+]
 
-    const featuredProducts = [
-      {
-        id: 1,
-        name: "ZAPATILLAS Puma",
-        price: "$33.99",
-        image: "images/productos/1.jpg", // Zapatillas deportivas
-        colors: ["black", "white", "gray"],
-        badge: "LOS MAS VENDIDOS",
-      },
-      {
-        id: 2,
-        name: "ZAPATILLA Calvin Klein",
-        price: "$26.99",
-        image: "images/productos/2.jpg", // Zapatillas elegantes
-        colors: ["beige", "brown"],
-        badge: "LOS MAS VENDIDOS",
-      },
-      {
-        id: 3,
-        name: "Zapatilla Lacoste",
-        price: "$32.99",
-        image: "images/productos/3.jpg", // Zapatillas blancas
-        colors: ["white", "blue", "gray"],
-      },
-      {
-        id: 4,
-        name: "Zapatilla Nike",
-        price: "$29.99",
-        image: "images/productos/4.jpg", // Nike rojas
-        colors: ["red", "black", "white"],
-      },
-      {
-        id: 5,
-        name: "Zapatilla Jordan",
-        price: "$38.00",
-        image: "images/productos/5.jpg", // Jordan negras
-        colors: ["black", "blue"],
-      },
-      {
-        id: 6,
-        name: "Zapatilla Fila",
-        price: "$29.99",
-        image: "images/productos/6.jpg", // Fila blancas
-        colors: ["navy", "white"],
-      },
-      {
-        id: 7,
-        name: "Zapatilla Fila",
-        price: "$29.99",
-        image: "images/productos/7.jpg", // Zapatillas casuales
-        colors: ["white", "black"],
-      },
-      {
-        id: 8,
-        name: "Zapatilla Nike",
-        price: "$36.50",
-        image: "images/productos/8.jpg", // Nike amarillas
-        colors: ["yellow", "black"],
-      },
-    ]
+export default function HomePage() {
+  const [products, setProducts] = useState<Product[]>([])
+  const [selectedCategory, setSelectedCategory] = useState<string>("all")
+  const [selectedColors, setSelectedColors] = useState<Record<number, string>>({})
+  const [loading, setLoading] = useState<boolean>(false)
 
-    const bestSellers = [
-      {
-        id: 9,
-        name: "Tanara Botas",
-        price: "$49.99",
-        image: "images/productos/9.jpg",
-        colors: ["brown", "pink", "green", "black"],
-      },
-      {
-        id: 10,
-        name: "Kidy Flat De Niña",
-        price: "$34.49",
-        image: "images/productos/10.jpg",
-        colors: ["yellow", "pink"],
-      },
-      {
-        id: 11,
-        name: "Zapatilla Calvin Klein",
-        price: "$32.99",
-        image: "images/productos/11.jpg",
-        colors: ["beige", "pink"],
-      },
-      {
-        id: 12,
-        name: "Zapatilla Nike",
-        price: "$49.99",
-        image: "images/productos/12.jpg",
-        colors: ["brown"],
-      },
-    ]
+  /**
+   * Descarga los productos cada vez que cambia la categoría seleccionada.
+   */
+  useEffect(() => {
+    const fetchProducts = async () => {
+      try {
+        setLoading(true)
+        const url =
+          "http://localhost:3000/products" +
+          (selectedCategory !== "all" ? `?category=${selectedCategory}` : "")
+        const resp = await fetch(url)
+        const data = await resp.json()
+        setProducts(data)
+      } catch (err) {
+        console.error("Error al cargar productos:", err)
+      } finally {
+        setLoading(false)
+      }
+    }
+    fetchProducts()
+  }, [selectedCategory])
 
-    const recommendedProducts = [
-      {
-        id: 13,
-        name: "Zapatilla Calvin Klein",
-        price: "$42.50",
-        image: "images/productos/13.jpg",
-        colors: ["gray"],
-      },
-      {
-        id: 14,
-        name: "Zapatilla Jordan",
-        price: "$41.00",
-        image: "images/productos/14.jpg",
-        colors: ["black"],
-      },
-      {
-        id: 15,
-        name: "Zapatilla Lacoste",
-        price: "$39.50",
-        image: "images/productos/15.jpg",
-        colors: ["navy"],
-      },
-      {
-        id: 16,
-        name: "Zapatilla Calvin Klein",
-        price: "$31.20",
-        image: "images/productos/16.jpg",
-        colors: ["beige"],
-      },
-    ]
+  // ————————————————————————————————————————————————————
+  // DERIVAMOS LAS TRES LISTAS QUE NECESITA LA IU
+  // ————————————————————————————————————————————————————
+  const featuredProducts = products.filter((p) => p.esDestacado)
+  const bestSellers = products.filter((p) => p.esMasVendido)
+  const recommendedProducts = products.filter((p) => p.esRecomendado)
+
+  /**
+   * Devuelve la clase Tailwind correspondiente a cada color.
+   */
+
+  /** Formatea el precio para mostrarlo con símbolo de dólar */
+  const displayPrice = (price: number | string) =>
+    typeof price === "number" ? `$${price.toFixed(2)}` : price
+
+
 
     const news = [
       {
@@ -210,7 +152,7 @@
                 <Link href="/" className="text-2xl font-bold">
                   <div className="flex flex-col items-center">
                     <span className="text-2xl tracking-wider">MAIN</span>
-                    <span className="text-[10px] tracking-wider">Management & Innovations</span>
+                    <span className="text-[10px] tracking-wider">Management & Inventions</span>
                   </div>
                 </Link>
               </div>
@@ -332,28 +274,26 @@
             </div>
           </section>
 
-          {/* Featured Products Section */}
-          <section className="py-12 bg-gray-50">
-            <div className="container mx-auto px-4">
-              <div className="text-center mb-8">
-                <h2 className="text-2xl font-bold text-gray-800 mb-2">PRODUCTOS DESTACADOS</h2>
-                <p className="text-gray-600">Looks increíbles</p>
-              </div>
+          {/* PRODUCTOS DESTACADOS */}
+        <section className="py-12 bg-gray-50">
+          <div className="container mx-auto px-4">
+            <div className="text-center mb-8">
+              <h2 className="text-2xl font-bold text-gray-800 mb-2">PRODUCTOS DESTACADOS</h2>
+              <p className="text-gray-600">Looks increíbles</p>
+            </div>
 
+            {loading && featuredProducts.length === 0 ? (
+              <p className="text-center text-gray-500">Cargando…</p>
+            ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
                 {featuredProducts.map((product) => (
                   <Link key={product.id} href={`/producto/${product.id}`} className="group">
                     <div className="bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow duration-300">
-                      <div className="relative">
-                        {product.badge && (
-                          <span className="absolute top-2 left-2 bg-gray-600 text-white text-xs px-2 py-1 rounded z-10">
-                            {product.badge}
-                          </span>
-                        )}
+                      <div className="relative">          
                         <div className="aspect-square bg-gray-100 rounded-t-lg overflow-hidden">
                           <Image
-                            src={product.image || "/placeholder.svg"}
-                            alt={product.name}
+                            src={product.imagen_nombre_archivo || "/placeholder.svg"}
+                            alt={product.nombre}
                             width={200}
                             height={200}
                             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
@@ -361,12 +301,12 @@
                         </div>
                       </div>
                       <div className="p-4">
-                        <h3 className="font-medium text-gray-800 mb-2">{product.name}</h3>
-                        <p className="text-lg font-bold text-gray-900 mb-3">{product.price}</p>
+                        <h3 className="font-medium text-gray-800 mb-2">{product.nombre}</h3>
+                        <p className="text-lg font-bold text-gray-900 mb-3">{displayPrice(product.precio)}</p>
                         <div className="flex gap-1">
-                          {product.colors.map((color, index) => (
+                          {product.color.map((color, idx) => (
                             <button
-                              key={index}
+                              key={idx}
                               className={`w-4 h-4 rounded-full ${getColorClass(color)} hover:scale-110 transition-transform`}
                               onClick={(e) => {
                                 e.preventDefault()
@@ -380,8 +320,9 @@
                   </Link>
                 ))}
               </div>
-            </div>
-          </section>
+            )}
+          </div>
+        </section>
 
           {/* Best Sellers Section */}
           <section className="py-12">
@@ -396,18 +337,18 @@
                     <div className="bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow duration-300">
                       <div className="aspect-square bg-gray-100 rounded-t-lg overflow-hidden">
                         <Image
-                          src={product.image || "/placeholder.svg"}
-                          alt={product.name}
+                          src={product.imagen_nombre_archivo || "/placeholder.svg"}
+                          alt={product.nombre}
                           width={200}
                           height={200}
                           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                         />
                       </div>
                       <div className="p-4">
-                        <h3 className="font-medium text-gray-800 mb-2">{product.name}</h3>
-                        <p className="text-lg font-bold text-gray-900 mb-3">{product.price}</p>
+                        <h3 className="font-medium text-gray-800 mb-2">{product.nombre}</h3>
+                        <p className="text-lg font-bold text-gray-900 mb-3">{product.precio}</p>
                         <div className="flex gap-1">
-                          {product.colors.map((color, index) => (
+                          {product.color.map((color, index) => (
                             <button
                               key={index}
                               className={`w-4 h-4 rounded-full ${getColorClass(color)} hover:scale-110 transition-transform`}
@@ -486,18 +427,18 @@
                     <div className="bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow duration-300">
                       <div className="aspect-square bg-gray-100 rounded-t-lg overflow-hidden">
                         <Image
-                          src={product.image || "/placeholder.svg"}
-                          alt={product.name}
+                          src={product.imagen_nombre_archivo || "/placeholder.svg"}
+                          alt={product.nombre}
                           width={200}
                           height={200}
                           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                         />
                       </div>
                       <div className="p-4">
-                        <h3 className="font-medium text-gray-800 mb-2">{product.name}</h3>
-                        <p className="text-lg font-bold text-gray-900 mb-3">{product.price}</p>
+                        <h3 className="font-medium text-gray-800 mb-2">{product.nombre}</h3>
+                        <p className="text-lg font-bold text-gray-900 mb-3">{displayPrice(product.precio)}</p>
                         <div className="flex gap-1">
-                          {product.colors.map((color, index) => (
+                          {product.color.map((color, index) => (
                             <button
                               key={index}
                               className={`w-4 h-4 rounded-full ${getColorClass(color)} hover:scale-110 transition-transform`}

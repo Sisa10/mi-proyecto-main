@@ -1,16 +1,15 @@
-"use client"
+'use client'
 
-import type React from "react"
-
-import { useState } from "react"
-import Image from "next/image"
-import Link from "next/link"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Textarea } from "@/components/ui/textarea"
-import { Search, Upload, Facebook, Twitter, Instagram, Youtube } from "lucide-react"
+import { useState } from 'react'
+import Image from 'next/image'
+import Link from 'next/link'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Textarea } from '@/components/ui/textarea'
+import { Facebook, Instagram, Search, Twitter, Upload, Youtube } from 'lucide-react'
+import { Alert, AlertDescription } from '@/components/ui/alert'
 
 const sizes = ["24", "25", "26", "27", "28", "29", "30", "31", "32", "33", "34", "35", "36"]
 const colors = [
@@ -28,7 +27,7 @@ export default function AgregarProducto() {
   const [formData, setFormData] = useState({
     nombre: "",
     precio: "",
-    categoria: "",
+    categoria_id: "",
     marca: "",
     color: "",
     tallas: [] as string[],
@@ -36,38 +35,74 @@ export default function AgregarProducto() {
     descripcion: "",
     especificaciones: "",
     etiquetas: "",
-  })
-  const [selectedImage, setSelectedImage] = useState<string | null>(null)
-  const [activeTab, setActiveTab] = useState("descripcion")
+  });
+  const [selectedImage, setSelectedImage] = useState<File | null>(null);
+  const [activeTab, setActiveTab] = useState("descripcion");
+  const [showAlert, setShowAlert] = useState(false);
 
   const handleInputChange = (field: string, value: string | number) => {
-    setFormData((prev) => ({ ...prev, [field]: value }))
-  }
+    setFormData((prev) => ({ ...prev, [field]: value }));
+  };
 
   const handleSizeToggle = (size: string) => {
     setFormData((prev) => ({
       ...prev,
       tallas: prev.tallas.includes(size) ? prev.tallas.filter((s) => s !== size) : [...prev.tallas, size],
-    }))
-  }
+    }));
+  };
 
   const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0]
-    if (file) {
-      const reader = new FileReader()
-      reader.onload = (e) => {
-        setSelectedImage(e.target?.result as string)
-      }
-      reader.readAsDataURL(file)
-    }
-  }
+    const file = event.target.files?.[0];
+    if (file) setSelectedImage(file);
+  };
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
-    console.log("Producto agregado:", formData)
-    alert("Producto agregado exitosamente!")
-    // Aquí iría la lógica para guardar en la base de datos
-  }
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const formDataToSend = new FormData();
+    formDataToSend.append('nombre', formData.nombre);
+    formDataToSend.append('precio', formData.precio.toString());
+    formDataToSend.append('categoria_id', formData.categoria_id);
+    formDataToSend.append('marca', formData.marca);
+    formDataToSend.append('color', formData.color);
+    formDataToSend.append('tallas', JSON.stringify(formData.tallas));
+    formDataToSend.append('stock', formData.stock.toString());
+    formDataToSend.append('descripcion', formData.descripcion);
+    formDataToSend.append('especificaciones', formData.especificaciones);
+    formDataToSend.append('etiquetas', formData.etiquetas);
+    if (selectedImage) formDataToSend.append('image', selectedImage);
+
+    try {
+      const response = await fetch('http://localhost:3000/products', {
+        method: 'POST',
+        body: formDataToSend,
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem('adminToken') || ''}`,
+        },
+      });
+      if (response.ok) {
+        setShowAlert(true);
+        setTimeout(() => setShowAlert(false), 3000);
+        setFormData({
+          nombre: "",
+          precio: "",
+          categoria_id: "",
+          marca: "",
+          color: "",
+          tallas: [],
+          stock: 0,
+          descripcion: "",
+          especificaciones: "",
+          etiquetas: "",
+        });
+        setSelectedImage(null);
+      } else {
+        alert('Error al agregar producto');
+      }
+    } catch (error) {
+      console.error('Error:', error);
+      alert('Error al conectar con el servidor');
+    }
+  };
 
   return (
     <div className="flex flex-col min-h-screen">
@@ -85,10 +120,7 @@ export default function AgregarProducto() {
             </div>
             <nav className="flex space-x-6">
               <Link href="/admin/inventory/agregar">
-                <Button
-                  variant="ghost"
-                  className="text-gray-700 hover:text-gray-900 uppercase text-sm font-medium bg-gray-100"
-                >
+                <Button variant="ghost" className="text-gray-700 hover:text-gray-900 uppercase text-sm font-medium bg-gray-100">
                   AGREGAR
                 </Button>
               </Link>
@@ -131,6 +163,11 @@ export default function AgregarProducto() {
       {/* Main Content */}
       <main className="flex-grow bg-white">
         <div className="container mx-auto px-4 py-8">
+          {showAlert && (
+            <Alert className="mb-6 border-green-200 bg-green-50">
+              <AlertDescription className="text-green-800">Producto agregado exitosamente.</AlertDescription>
+            </Alert>
+          )}
           <form onSubmit={handleSubmit}>
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
               {/* Left Column - Image Upload */}
@@ -139,7 +176,7 @@ export default function AgregarProducto() {
                   {selectedImage ? (
                     <div className="relative w-full h-full">
                       <Image
-                        src={selectedImage || "/placeholder.svg"}
+                        src={URL.createObjectURL(selectedImage)}
                         alt="Producto"
                         fill
                         className="object-cover rounded-lg"
@@ -214,18 +251,18 @@ export default function AgregarProducto() {
 
                 {/* Category */}
                 <div>
-                  <Label htmlFor="categoria" className="text-sm font-medium text-gray-700">
+                  <Label htmlFor="categoria_id" className="text-sm font-medium text-gray-700">
                     Categoría
                   </Label>
-                  <Select value={formData.categoria} onValueChange={(value) => handleInputChange("categoria", value)}>
+                  <Select value={formData.categoria_id} onValueChange={(value) => handleInputChange("categoria_id", value)}>
                     <SelectTrigger className="mt-1">
                       <SelectValue placeholder="Seleccionar categoría" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="mujeres">Mujeres</SelectItem>
-                      <SelectItem value="hombres">Hombres</SelectItem>
-                      <SelectItem value="ninas">Niñas</SelectItem>
-                      <SelectItem value="ninos">Niños</SelectItem>
+                      <SelectItem value="1">Mujeres</SelectItem>
+                      <SelectItem value="2">Hombres</SelectItem>
+                      <SelectItem value="3">Niñas</SelectItem>
+                      <SelectItem value="4">Niños</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -351,7 +388,6 @@ export default function AgregarProducto() {
                       id="descripcion"
                       value={formData.descripcion}
                       onChange={(e) => handleInputChange("descripcion", e.target.value)}
-                      placeholder="Ingrese una descripción detallada del producto..."
                       rows={4}
                       className="mt-1"
                     />
@@ -367,7 +403,6 @@ export default function AgregarProducto() {
                       id="especificaciones"
                       value={formData.especificaciones}
                       onChange={(e) => handleInputChange("especificaciones", e.target.value)}
-                      placeholder="Ingrese las especificaciones técnicas del producto..."
                       rows={4}
                       className="mt-1"
                     />
@@ -404,7 +439,6 @@ export default function AgregarProducto() {
       <footer className="bg-black text-white py-10">
         <div className="container mx-auto px-4">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
-            {/* Column 1 - Logo and contact */}
             <div className="space-y-4">
               <div className="bg-white p-2 inline-block">
                 <div className="flex flex-col items-center">
@@ -423,129 +457,51 @@ export default function AgregarProducto() {
                 </p>
               </div>
             </div>
-
-            {/* Column 2 - Information */}
             <div>
               <h3 className="font-bold text-sm uppercase mb-4">INFORMACIÓN</h3>
               <ul className="space-y-2 text-sm">
-                <li>
-                  <Link href="#" className="hover:underline">
-                    Política de Envíos y Cambios
-                  </Link>
-                </li>
-                <li>
-                  <Link href="#" className="hover:underline">
-                    Política de Privacidad
-                  </Link>
-                </li>
-                <li>
-                  <Link href="#" className="hover:underline">
-                    Términos y Condiciones
-                  </Link>
-                </li>
-                <li>
-                  <Link href="#" className="hover:underline">
-                    Preguntas Frecuentes
-                  </Link>
-                </li>
-                <li>
-                  <Link href="#" className="hover:underline">
-                    Nuestra Empresa
-                  </Link>
-                </li>
-                <li>
-                  <Link href="#" className="hover:underline">
-                    Contáctenos
-                  </Link>
-                </li>
+                <li><Link href="#" className="hover:underline">Política de Envíos y Cambios</Link></li>
+                <li><Link href="#" className="hover:underline">Política de Privacidad</Link></li>
+                <li><Link href="#" className="hover:underline">Términos y Condiciones</Link></li>
+                <li><Link href="#" className="hover:underline">Preguntas Frecuentes</Link></li>
+                <li><Link href="#" className="hover:underline">Nuestra Empresa</Link></li>
+                <li><Link href="#" className="hover:underline">Contáctenos</Link></li>
               </ul>
             </div>
-
-            {/* Column 3 - Customer Service */}
             <div>
               <h3 className="font-bold text-sm uppercase mb-4">SERVICIO AL CLIENTE</h3>
               <ul className="space-y-2 text-sm">
-                <li>
-                  <Link href="#" className="hover:underline">
-                    Noticias
-                  </Link>
-                </li>
-                <li>
-                  <Link href="#" className="hover:underline">
-                    Productos vistos recientemente
-                  </Link>
-                </li>
-                <li>
-                  <Link href="#" className="hover:underline">
-                    Compare la lista de productos
-                  </Link>
-                </li>
-                <li>
-                  <Link href="#" className="hover:underline">
-                    Políticas Generales de Protección De Datos Personales
-                  </Link>
-                </li>
+                <li><Link href="#" className="hover:underline">Noticias</Link></li>
+                <li><Link href="#" className="hover:underline">Productos vistos recientemente</Link></li>
+                <li><Link href="#" className="hover:underline">Compare la lista de productos</Link></li>
+                <li><Link href="#" className="hover:underline">Políticas Generales de Protección De Datos Personales</Link></li>
               </ul>
             </div>
-
-            {/* Column 4 - My Account */}
             <div>
               <h3 className="font-bold text-sm uppercase mb-4">MI CUENTA</h3>
               <ul className="space-y-2 text-sm">
-                <li>
-                  <Link href="#" className="hover:underline">
-                    Órdenes
-                  </Link>
-                </li>
-                <li>
-                  <Link href="#" className="hover:underline">
-                    Direcciones
-                  </Link>
-                </li>
-                <li>
-                  <Link href="#" className="hover:underline">
-                    Carrito de compras
-                  </Link>
-                </li>
-                <li>
-                  <Link href="#" className="hover:underline">
-                    Lista de deseos
-                  </Link>
-                </li>
+                <li><Link href="#" className="hover:underline">Órdenes</Link></li>
+                <li><Link href="#" className="hover:underline">Direcciones</Link></li>
+                <li><Link href="#" className="hover:underline">Carrito de compras</Link></li>
+                <li><Link href="#" className="hover:underline">Lista de deseos</Link></li>
               </ul>
             </div>
           </div>
-
           <hr className="my-8 border-gray-800" />
-
-          {/* Social media and newsletter */}
           <div className="flex flex-col md:flex-row justify-between items-center">
             <div className="mb-4 md:mb-0">
               <h3 className="font-bold text-sm mb-4">Síguenos</h3>
               <div className="flex space-x-4">
-                <Link href="#" className="hover:text-gray-300">
-                  <Facebook className="h-5 w-5" />
-                </Link>
-                <Link href="#" className="hover:text-gray-300">
-                  <Twitter className="h-5 w-5" />
-                </Link>
-                <Link href="#" className="hover:text-gray-300">
-                  <Instagram className="h-5 w-5" />
-                </Link>
-                <Link href="#" className="hover:text-gray-300">
-                  <Youtube className="h-5 w-5" />
-                </Link>
+                <Link href="#" className="hover:text-gray-300"><Facebook className="h-5 w-5" /></Link>
+                <Link href="#" className="hover:text-gray-300"><Twitter className="h-5 w-5" /></Link>
+                <Link href="#" className="hover:text-gray-300"><Instagram className="h-5 w-5" /></Link>
+                <Link href="#" className="hover:text-gray-300"><Youtube className="h-5 w-5" /></Link>
               </div>
             </div>
-
             <div className="w-full md:w-auto">
               <h3 className="font-bold text-sm mb-4">Boletín</h3>
               <div className="flex">
-                <Input
-                  type="email"
-                  placeholder="Introduzca su correo electrónico aquí..."
-                  className="rounded-l bg-white text-black border-0 min-w-[250px]"
-                />
+                <Input type="email" placeholder="Introduzca su correo electrónico aquí..." className="rounded-l bg-white text-black border-0 min-w-[250px]" />
                 <Button className="bg-gray-700 hover:bg-gray-600 text-white rounded-r">Suscribirse</Button>
               </div>
             </div>
@@ -553,5 +509,5 @@ export default function AgregarProducto() {
         </div>
       </footer>
     </div>
-  )
+  );
 }

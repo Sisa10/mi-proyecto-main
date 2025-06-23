@@ -1,106 +1,69 @@
-"use client"
+'use client'
 
-import { useState } from "react"
-import Image from "next/image"
-import Link from "next/link"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Search, Trash2, Facebook, Twitter, Instagram, Youtube } from "lucide-react"
-import { Alert, AlertDescription } from "@/components/ui/alert"
+import { useState, useEffect } from 'react'
+import Image from 'next/image'
+import Link from 'next/link'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Search, Trash2 } from 'lucide-react'
+import { Alert, AlertDescription } from '@/components/ui/alert'
 
-// Datos de ejemplo de productos
-const sampleProducts = [
-  {
-    id: 1,
-    name: "Zapatilla Cocodrilo",
-    price: "$30.00",
-    category: "Mujeres",
-    brand: "Cocodrilo",
-    stock: 15,
-    image: "/placeholder.svg?height=100&width=100",
-  },
-  {
-    id: 2,
-    name: "Zapatilla Nike",
-    price: "$45.99",
-    category: "Hombres",
-    brand: "Nike",
-    stock: 8,
-    image: "/placeholder.svg?height=100&width=100",
-  },
-  {
-    id: 3,
-    name: "Zapatilla Princesa",
-    price: "$25.99",
-    category: "Niñas",
-    brand: "Princess",
-    stock: 12,
-    image: "/placeholder.svg?height=100&width=100",
-  },
-  {
-    id: 4,
-    name: "Zapatilla Superhéroe",
-    price: "$27.99",
-    category: "Niños",
-    brand: "Hero",
-    stock: 6,
-    image: "/placeholder.svg?height=100&width=100",
-  },
-]
+type Product = {
+  id: number
+  nombre: string
+  precio: number
+  categoria: { id: number, nombre: string }
+  marca: string
+  imagen_nombre_archivo?: string
+}
 
 export default function EliminarProducto() {
-  const [products, setProducts] = useState(sampleProducts)
+  const [products, setProducts] = useState<Product[]>([])
   const [searchTerm, setSearchTerm] = useState("")
-  const [selectedProducts, setSelectedProducts] = useState<number[]>([])
   const [showAlert, setShowAlert] = useState(false)
+
+  useEffect(() => {
+    const fetchProducts = async () => {
+      try {
+        const response = await fetch('http://localhost:3000/products', {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem('adminToken') || ''}`,
+          },
+        })
+        const data = await response.json()
+        setProducts(data)
+      } catch (error) {
+        console.error('Error al cargar productos:', error)
+      }
+    }
+    fetchProducts()
+  }, [])
 
   const filteredProducts = products.filter(
     (product) =>
-      product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      product.brand.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      product.category.toLowerCase().includes(searchTerm.toLowerCase()),
+      product.nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      product.marca.toLowerCase().includes(searchTerm.toLowerCase()),
   )
 
-  const handleSelectProduct = (productId: number) => {
-    setSelectedProducts((prev) =>
-      prev.includes(productId) ? prev.filter((id) => id !== productId) : [...prev, productId],
-    )
-  }
-
-  const handleSelectAll = () => {
-    if (selectedProducts.length === filteredProducts.length) {
-      setSelectedProducts([])
-    } else {
-      setSelectedProducts(filteredProducts.map((p) => p.id))
-    }
-  }
-
-  const handleDeleteSelected = () => {
-    if (selectedProducts.length === 0) return
-
-    const confirmDelete = window.confirm(
-      `¿Estás seguro de que deseas eliminar ${selectedProducts.length} producto(s)? Esta acción no se puede deshacer.`,
-    )
-
-    if (confirmDelete) {
-      setProducts((prev) => prev.filter((product) => !selectedProducts.includes(product.id)))
-      setSelectedProducts([])
-      setShowAlert(true)
-      setTimeout(() => setShowAlert(false), 3000)
-    }
-  }
-
-  const handleDeleteSingle = (productId: number) => {
-    const product = products.find((p) => p.id === productId)
-    const confirmDelete = window.confirm(
-      `¿Estás seguro de que deseas eliminar "${product?.name}"? Esta acción no se puede deshacer.`,
-    )
-
-    if (confirmDelete) {
-      setProducts((prev) => prev.filter((p) => p.id !== productId))
-      setSelectedProducts((prev) => prev.filter((id) => id !== productId))
-      setShowAlert(true)
-      setTimeout(() => setShowAlert(false), 3000)
+  const handleDelete = async (id: number) => {
+    if (!confirm('¿Estás seguro de eliminar este producto?')) return
+    try {
+      const response = await fetch(`http://localhost:3000/products/${id}`, {
+        method: 'DELETE',
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem('adminToken') || ''}`,
+        },
+      })
+      if (response.ok) {
+        setProducts(products.filter((p) => p.id !== id))
+        setShowAlert(true)
+        setTimeout(() => setShowAlert(false), 3000)
+      } else {
+        alert('Error al eliminar producto')
+      }
+    } catch (error) {
+      console.error('Error:', error)
+      alert('Error al conectar con el servidor')
     }
   }
 
@@ -168,152 +131,56 @@ export default function EliminarProducto() {
         <div className="container mx-auto px-4 py-8">
           {showAlert && (
             <Alert className="mb-6 border-green-200 bg-green-50">
-              <AlertDescription className="text-green-800">Producto(s) eliminado(s) exitosamente.</AlertDescription>
+              <AlertDescription className="text-green-800">Producto eliminado exitosamente.</AlertDescription>
             </Alert>
           )}
 
-          <div className="mb-6">
-            <h1 className="text-2xl font-bold text-gray-900 mb-4">Eliminar Productos</h1>
+          <h2 className="text-xl font-bold text-gray-900 mb-4">Eliminar Producto</h2>
 
-            {/* Search and Actions */}
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
-              <div className="relative flex-1 max-w-md">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-                <Input
-                  type="text"
-                  placeholder="Buscar productos..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10"
-                />
-              </div>
-
-              <div className="flex gap-2">
-                <Button variant="outline" onClick={handleSelectAll} disabled={filteredProducts.length === 0}>
-                  {selectedProducts.length === filteredProducts.length ? "Deseleccionar Todo" : "Seleccionar Todo"}
-                </Button>
-                <Button
-                  variant="destructive"
-                  onClick={handleDeleteSelected}
-                  disabled={selectedProducts.length === 0}
-                  className="flex items-center gap-2"
-                >
-                  <Trash2 className="w-4 h-4" />
-                  Eliminar Seleccionados ({selectedProducts.length})
-                </Button>
-              </div>
-            </div>
+          {/* Search */}
+          <div className="relative mb-4">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+            <Input
+              type="text"
+              placeholder="Buscar productos..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-10"
+            />
           </div>
 
-          {/* Products Table */}
-          <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      <input
-                        type="checkbox"
-                        checked={selectedProducts.length === filteredProducts.length && filteredProducts.length > 0}
-                        onChange={handleSelectAll}
-                        className="rounded border-gray-300"
-                      />
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Producto
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Categoría
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Marca
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Precio
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Stock
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Acciones
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {filteredProducts.map((product) => (
-                    <tr key={product.id} className={selectedProducts.includes(product.id) ? "bg-red-50" : ""}>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <input
-                          type="checkbox"
-                          checked={selectedProducts.includes(product.id)}
-                          onChange={() => handleSelectProduct(product.id)}
-                          className="rounded border-gray-300"
-                        />
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="flex items-center">
-                          <div className="flex-shrink-0 h-12 w-12">
-                            <Image
-                              className="h-12 w-12 rounded-lg object-cover"
-                              src={product.image || "/placeholder.svg"}
-                              alt={product.name}
-                              width={48}
-                              height={48}
-                            />
-                          </div>
-                          <div className="ml-4">
-                            <div className="text-sm font-medium text-gray-900">{product.name}</div>
-                            <div className="text-sm text-gray-500">ID: {product.id}</div>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800">
-                          {product.category}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{product.brand}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{product.price}</td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span
-                          className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                            product.stock > 10
-                              ? "bg-green-100 text-green-800"
-                              : product.stock > 5
-                                ? "bg-yellow-100 text-yellow-800"
-                                : "bg-red-100 text-red-800"
-                          }`}
-                        >
-                          {product.stock} unidades
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                        <Button
-                          variant="destructive"
-                          size="sm"
-                          onClick={() => handleDeleteSingle(product.id)}
-                          className="flex items-center gap-1"
-                        >
-                          <Trash2 className="w-3 h-3" />
-                          Eliminar
-                        </Button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-
-            {filteredProducts.length === 0 && (
-              <div className="text-center py-12">
-                <div className="text-gray-500">
-                  {searchTerm
-                    ? "No se encontraron productos que coincidan con tu búsqueda."
-                    : "No hay productos disponibles."}
+          {/* Product List */}
+          <div className="space-y-2 max-h-96 overflow-y-auto">
+            {filteredProducts.map((product) => (
+              <div key={product.id} className="p-3 border rounded-lg flex items-center justify-between">
+                <div className="flex items-center space-x-3">
+                  <Image
+                    src={`/images/${product.categoria.nombre}/${product.imagen_nombre_archivo || 'placeholder.svg'}`}
+                    alt={product.nombre}
+                    width={40}
+                    height={40}
+                    className="rounded object-cover"
+                  />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-gray-900 truncate">{product.nombre}</p>
+                    <p className="text-sm text-gray-500">
+                      {product.marca} - ${product.precio}
+                    </p>
+                  </div>
                 </div>
+                <Button variant="destructive" size="sm" onClick={() => handleDelete(product.id)}>
+                  <Trash2 className="w-4 h-4 mr-2" />
+                  Eliminar
+                </Button>
               </div>
-            )}
+            ))}
           </div>
+
+          {filteredProducts.length === 0 && (
+            <div className="text-center py-8 text-gray-500">
+              No se encontraron productos que coincidan con tu búsqueda.
+            </div>
+          )}
         </div>
       </main>
 
@@ -321,7 +188,6 @@ export default function EliminarProducto() {
       <footer className="bg-black text-white py-10">
         <div className="container mx-auto px-4">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
-            {/* Column 1 - Logo and contact */}
             <div className="space-y-4">
               <div className="bg-white p-2 inline-block">
                 <div className="flex flex-col items-center">
@@ -329,19 +195,11 @@ export default function EliminarProducto() {
                 </div>
               </div>
               <div className="space-y-2 text-sm">
-                <p className="flex items-center gap-2">
-                  <span>UCT</span>
-                </p>
-                <p className="flex items-center gap-2">
-                  <span>main.companies@gmail.com</span>
-                </p>
-                <p className="flex items-center gap-2">
-                  <span>+593 04 600-8100</span>
-                </p>
+                <p className="flex items-center gap-2">UCT</p>
+                <p className="flex items-center gap-2">main.companies@gmail.com</p>
+                <p className="flex items-center gap-2">+593 04 600-8100</p>
               </div>
             </div>
-
-            {/* Column 2 - Information */}
             <div>
               <h3 className="font-bold text-sm uppercase mb-4">INFORMACIÓN</h3>
               <ul className="space-y-2 text-sm">
@@ -377,8 +235,6 @@ export default function EliminarProducto() {
                 </li>
               </ul>
             </div>
-
-            {/* Column 3 - Customer Service */}
             <div>
               <h3 className="font-bold text-sm uppercase mb-4">SERVICIO AL CLIENTE</h3>
               <ul className="space-y-2 text-sm">
@@ -404,8 +260,6 @@ export default function EliminarProducto() {
                 </li>
               </ul>
             </div>
-
-            {/* Column 4 - My Account */}
             <div>
               <h3 className="font-bold text-sm uppercase mb-4">MI CUENTA</h3>
               <ul className="space-y-2 text-sm">
@@ -432,38 +286,42 @@ export default function EliminarProducto() {
               </ul>
             </div>
           </div>
-
           <hr className="my-8 border-gray-800" />
-
-          {/* Social media and newsletter */}
           <div className="flex flex-col md:flex-row justify-between items-center">
             <div className="mb-4 md:mb-0">
               <h3 className="font-bold text-sm mb-4">Síguenos</h3>
               <div className="flex space-x-4">
                 <Link href="#" className="hover:text-gray-300">
-                  <Facebook className="h-5 w-5" />
+                  <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M12 2C6.477 2 2 6.477 2 12c0 4.991 3.657 9.128 8.438 9.879V14.89h-2.54V12h2.54V9.797c0-2.506 1.492-3.89 3.777-3.89 1.094 0 2.238.195 2.238.195v2.46h-1.26c-1.243 0-1.63.771-1.63 1.562V12h2.773l-.443 2.89h-2.33v6.989C18.343 21.128 22 16.991 22 12c0-5.523-4.477-10-10-10z" />
+                  </svg>
                 </Link>
                 <Link href="#" className="hover:text-gray-300">
-                  <Twitter className="h-5 w-5" />
+                  <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M23 3a10.9 10.9 0 01-3.14 1.53 4.48 4.48 0 00-7.86 3v1A10.66 10.66 0 013 4s-4 9 5 13a11.64 11.64 0 01-7 2c9 5 20 0 20-11.5a4.5 4.5 0 00-.08-.83A7.72 7.72 0 0023 3z" />
+                  </svg>
                 </Link>
                 <Link href="#" className="hover:text-gray-300">
-                  <Instagram className="h-5 w-5" />
+                  <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z" />
+                  </svg>
                 </Link>
                 <Link href="#" className="hover:text-gray-300">
-                  <Youtube className="h-5 w-5" />
+                  <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M19.615 3.184c-3.604-.246-11.631-.245-15.23 0-3.897.266-4.356 2.62-4.385 8.816.029 6.185.484 8.549 4.385 8.816 3.6.245 11.626.246 15.23 0 3.897-.266 4.356-2.62 4.385-8.816-.029-6.185-.484-8.549-4.385-8.816zm-10.615 12.816v-8l8 4-8 4z" />
+                  </svg>
                 </Link>
               </div>
             </div>
-
             <div className="w-full md:w-auto">
-              <h3 className="font-bold text-sm mb-4">Boletín</h3>
+              <h3 className="font-bold text-sm mb-2">Boletín</h3>
               <div className="flex">
                 <Input
                   type="email"
                   placeholder="Introduzca su correo electrónico aquí..."
                   className="rounded-l bg-white text-black border-0 min-w-[250px]"
                 />
-                <Button className="bg-gray-700 hover:bg-gray-600 text-white rounded-r">Suscribirse</Button>
+                <Button className="bg-gray-700 hover:bg-gray-600 text-white rounded-r">Suscribirás</Button>
               </div>
             </div>
           </div>

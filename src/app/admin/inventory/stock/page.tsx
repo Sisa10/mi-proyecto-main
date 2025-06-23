@@ -1,163 +1,85 @@
-"use client"
+'use client'
 
-import { useState } from "react"
-import Image from "next/image"
-import Link from "next/link"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import {
-  Search,
-  Package,
-  AlertTriangle,
-  TrendingUp,
-  TrendingDown,
-  Facebook,
-  Twitter,
-  Instagram,
-  Youtube,
-} from "lucide-react"
-import { Alert, AlertDescription } from "@/components/ui/alert"
+import { useState, useEffect } from 'react'
+import Image from 'next/image'
+import Link from 'next/link'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Search, Package2 } from 'lucide-react'
+import { Alert, AlertDescription } from '@/components/ui/alert'
 
-// Datos de ejemplo de productos con stock
-const sampleProducts = [
-  {
-    id: 1,
-    name: "Zapatilla Cocodrilo",
-    price: "$30.00",
-    category: "Mujeres",
-    brand: "Cocodrilo",
-    currentStock: 15,
-    minStock: 10,
-    maxStock: 50,
-    image: "/placeholder.svg?height=60&width=60",
-    lastUpdated: "2024-01-15",
-  },
-  {
-    id: 2,
-    name: "Zapatilla Nike",
-    price: "$45.99",
-    category: "Hombres",
-    brand: "Nike",
-    currentStock: 3,
-    minStock: 5,
-    maxStock: 30,
-    image: "/placeholder.svg?height=60&width=60",
-    lastUpdated: "2024-01-14",
-  },
-  {
-    id: 3,
-    name: "Zapatilla Princesa",
-    price: "$25.99",
-    category: "Niñas",
-    brand: "Princess",
-    currentStock: 25,
-    minStock: 8,
-    maxStock: 40,
-    image: "/placeholder.svg?height=60&width=60",
-    lastUpdated: "2024-01-13",
-  },
-  {
-    id: 4,
-    name: "Zapatilla Superhéroe",
-    price: "$27.99",
-    category: "Niños",
-    brand: "Hero",
-    currentStock: 0,
-    minStock: 5,
-    maxStock: 25,
-    image: "/placeholder.svg?height=60&width=60",
-    lastUpdated: "2024-01-12",
-  },
-  {
-    id: 5,
-    name: "Zapatilla Adidas",
-    price: "$55.99",
-    category: "Hombres",
-    brand: "Adidas",
-    currentStock: 45,
-    minStock: 15,
-    maxStock: 60,
-    image: "/placeholder.svg?height=60&width=60",
-    lastUpdated: "2024-01-11",
-  },
-]
+type Product = {
+  id: number
+  nombre: string
+  precio: number
+  stock: number
+  categoria: { id: number, nombre: string }
+  marca: string
+  imagen_nombre_archivo?: string
+}
 
-export default function StockManagement() {
-  const [products, setProducts] = useState(sampleProducts)
+export default function StockComponent() {
+  const [products, setProducts] = useState<Product[]>([])
   const [searchTerm, setSearchTerm] = useState("")
-  const [filterCategory, setFilterCategory] = useState("all")
-  const [filterStatus, setFilterStatus] = useState("all")
+  const [stockUpdates, setStockUpdates] = useState<{ [id: number]: number }>({})
   const [showAlert, setShowAlert] = useState(false)
-  const [alertMessage, setAlertMessage] = useState("")
 
-  const filteredProducts = products.filter((product) => {
-    const matchesSearch =
-      product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      product.brand.toLowerCase().includes(searchTerm.toLowerCase())
-
-    const matchesCategory = filterCategory === "all" || product.category.toLowerCase() === filterCategory
-
-    let matchesStatus = true
-    if (filterStatus === "low") {
-      matchesStatus = product.currentStock <= product.minStock
-    } else if (filterStatus === "out") {
-      matchesStatus = product.currentStock === 0
-    } else if (filterStatus === "normal") {
-      matchesStatus = product.currentStock > product.minStock && product.currentStock < product.maxStock
-    } else if (filterStatus === "high") {
-      matchesStatus = product.currentStock >= product.maxStock
+  useEffect(() => {
+    const fetchProducts = async () => {
+      try {
+        const response = await fetch('http://localhost:3000/products', {
+          //headers: {
+            //Authorization: `Bearer ${localStorage.getItem('adminToken') || ''}`,
+          //},
+        })
+        const data = await response.json()
+        setProducts(data)
+      } catch (error) {
+        console.error('Error al cargar productos:', error)
+      }
     }
+    fetchProducts()
+  }, [])
 
-    return matchesSearch && matchesCategory && matchesStatus
-  })
-
-  const getStockStatus = (product: (typeof sampleProducts)[0]) => {
-    if (product.currentStock === 0) return { status: "out", label: "Agotado", class: "bg-red-100 text-red-800" }
-    if (product.currentStock <= product.minStock)
-      return { status: "low", label: "Stock Bajo", class: "bg-yellow-100 text-yellow-800" }
-    if (product.currentStock >= product.maxStock)
-      return { status: "high", label: "Stock Alto", class: "bg-blue-100 text-blue-800" }
-    return { status: "normal", label: "Normal", class: "bg-green-100 text-green-800" }
-  }
-
-  const updateStock = (productId: number, newStock: number) => {
-    if (newStock < 0) return
-
-    setProducts((prev) =>
-      prev.map((product) =>
-        product.id === productId
-          ? { ...product, currentStock: newStock, lastUpdated: new Date().toISOString().split("T")[0] }
-          : product,
-      ),
-    )
-
-    setAlertMessage(`Stock actualizado exitosamente`)
-    setShowAlert(true)
-    setTimeout(() => setShowAlert(false), 3000)
-  }
-
-  const handleStockChange = (productId: number, value: string) => {
-    const newStock = Number.parseInt(value) || 0
-    updateStock(productId, newStock)
-  }
-
-  const adjustStock = (productId: number, adjustment: number) => {
-    const product = products.find((p) => p.id === productId)
-    if (product) {
-      const newStock = Math.max(0, product.currentStock + adjustment)
-      updateStock(productId, newStock)
-    }
-  }
-
-  // Estadísticas
-  const totalProducts = products.length
-  const lowStockProducts = products.filter((p) => p.currentStock <= p.minStock).length
-  const outOfStockProducts = products.filter((p) => p.currentStock === 0).length
-  const totalStockValue = products.reduce(
-    (sum, p) => sum + p.currentStock * Number.parseFloat(p.price.replace("$", "")),
-    0,
+  const filteredProducts = products.filter(
+    (product) =>
+      product.nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      product.marca.toLowerCase().includes(searchTerm.toLowerCase()),
   )
+
+  const handleStockChange = (id: number, value: number) => {
+    setStockUpdates((prev) => ({ ...prev, [id]: value }))
+  }
+
+  const handleUpdateStock = async (id: number) => {
+    const newStock = stockUpdates[id]
+    if (newStock === undefined || newStock < 0) {
+      alert('Por favor, ingrese un stock válido.')
+      return
+    }
+    try {
+      const response = await fetch(`http://localhost:3000/products/${id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${localStorage.getItem('adminToken') || ''}`,
+        },
+        body: JSON.stringify({ stock: newStock }),
+      })
+      if (response.ok) {
+        setProducts((prev) =>
+          prev.map((p) => (p.id === id ? { ...p, stock: newStock } : p)),
+        )
+        setShowAlert(true)
+        setTimeout(() => setShowAlert(false), 3000)
+      } else {
+        alert('Error al actualizar stock')
+      }
+    } catch (error) {
+      console.error('Error:', error)
+      alert('Error al conectar con el servidor')
+    }
+  }
 
   return (
     <div className="flex flex-col min-h-screen">
@@ -219,236 +141,79 @@ export default function StockManagement() {
       </div>
 
       {/* Main Content */}
-      <main className="flex-grow bg-gray-50">
+      <main className="flex-grow bg-white">
         <div className="container mx-auto px-4 py-8">
           {showAlert && (
             <Alert className="mb-6 border-green-200 bg-green-50">
-              <AlertDescription className="text-green-800">{alertMessage}</AlertDescription>
+              <AlertDescription className="text-green-800">Stock actualizado exitosamente.</AlertDescription>
             </Alert>
           )}
 
-          {/* Statistics Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-            <div className="bg-white p-6 rounded-lg shadow-sm border">
-              <div className="flex items-center">
-                <Package className="w-8 h-8 text-blue-500" />
-                <div className="ml-4">
-                  <p className="text-sm font-medium text-gray-600">Total Productos</p>
-                  <p className="text-2xl font-bold text-gray-900">{totalProducts}</p>
-                </div>
-              </div>
-            </div>
+          <h2 className="text-xl font-bold text-gray-900 mb-4">Gestionar Stock</h2>
 
-            <div className="bg-white p-6 rounded-lg shadow-sm border">
-              <div className="flex items-center">
-                <AlertTriangle className="w-8 h-8 text-yellow-500" />
-                <div className="ml-4">
-                  <p className="text-sm font-medium text-gray-600">Stock Bajo</p>
-                  <p className="text-2xl font-bold text-gray-900">{lowStockProducts}</p>
-                </div>
-              </div>
-            </div>
-
-            <div className="bg-white p-6 rounded-lg shadow-sm border">
-              <div className="flex items-center">
-                <TrendingDown className="w-8 h-8 text-red-500" />
-                <div className="ml-4">
-                  <p className="text-sm font-medium text-gray-600">Agotados</p>
-                  <p className="text-2xl font-bold text-gray-900">{outOfStockProducts}</p>
-                </div>
-              </div>
-            </div>
-
-            <div className="bg-white p-6 rounded-lg shadow-sm border">
-              <div className="flex items-center">
-                <TrendingUp className="w-8 h-8 text-green-500" />
-                <div className="ml-4">
-                  <p className="text-sm font-medium text-gray-600">Valor Total</p>
-                  <p className="text-2xl font-bold text-gray-900">${totalStockValue.toFixed(2)}</p>
-                </div>
-              </div>
-            </div>
+          {/* Search */}
+          <div className="relative mb-4">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+            <Input
+              type="text"
+              placeholder="Buscar producto..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-10"
+            />
           </div>
 
-          {/* Filters */}
-          <div className="bg-white p-6 rounded-lg shadow-sm border mb-6">
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Buscar</label>
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-                  <Input
-                    type="text"
-                    placeholder="Buscar productos..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="pl-10"
+          {/* Product List */}
+          <div className="space-y-2 max-h-96 overflow-y-auto">
+            {filteredProducts.map((product) => (
+              <div
+                key={product.id}
+                className="p-3 border rounded-lg flex items-center justify-between"
+              >
+                <div className="flex items-center space-x-3">
+                  <Image
+                    src={`/images/${product.categoria.nombre}/${product.imagen_nombre_archivo || 'placeholder.svg'}`}
+                    alt={product.nombre}
+                    width={40}
+                    height={40}
+                    className="rounded object-cover"
                   />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-gray-900 truncate">{product.nombre}</p>
+                    <p className="text-sm text-gray-500">
+                      {product.marca} - Stock actual: {product.stock}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <Input
+                    type="number"
+                    min="0"
+                    placeholder="Nuevo stock"
+                    className="w-24"
+                    onChange={(e) =>
+                      handleStockChange(product.id, parseInt(e.target.value) || 0)
+                    }
+                  />
+                  <Button
+                    variant="default"
+                    size="sm"
+                    onClick={() => handleUpdateStock(product.id)}
+                    disabled={stockUpdates[product.id] === undefined}
+                  >
+                    <Package2 className="w-4 h-4 mr-2" />
+                    Actualizar
+                  </Button>
                 </div>
               </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Categoría</label>
-                <Select value={filterCategory} onValueChange={setFilterCategory}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Todas las categorías</SelectItem>
-                    <SelectItem value="mujeres">Mujeres</SelectItem>
-                    <SelectItem value="hombres">Hombres</SelectItem>
-                    <SelectItem value="niñas">Niñas</SelectItem>
-                    <SelectItem value="niños">Niños</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Estado del Stock</label>
-                <Select value={filterStatus} onValueChange={setFilterStatus}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Todos los estados</SelectItem>
-                    <SelectItem value="normal">Normal</SelectItem>
-                    <SelectItem value="low">Stock Bajo</SelectItem>
-                    <SelectItem value="out">Agotado</SelectItem>
-                    <SelectItem value="high">Stock Alto</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="flex items-end">
-                <Button
-                  onClick={() => {
-                    setSearchTerm("")
-                    setFilterCategory("all")
-                    setFilterStatus("all")
-                  }}
-                  variant="outline"
-                  className="w-full"
-                >
-                  Limpiar Filtros
-                </Button>
-              </div>
-            </div>
+            ))}
           </div>
 
-          {/* Products Table */}
-          <div className="bg-white rounded-lg shadow-sm border overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Producto
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Categoría
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Precio
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Stock Actual
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Estado
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Gestión de Stock
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Última Actualización
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {filteredProducts.map((product) => {
-                    const stockStatus = getStockStatus(product)
-                    return (
-                      <tr key={product.id} className="hover:bg-gray-50">
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="flex items-center">
-                            <div className="flex-shrink-0 h-12 w-12">
-                              <Image
-                                className="h-12 w-12 rounded-lg object-cover"
-                                src={product.image || "/placeholder.svg"}
-                                alt={product.name}
-                                width={48}
-                                height={48}
-                              />
-                            </div>
-                            <div className="ml-4">
-                              <div className="text-sm font-medium text-gray-900">{product.name}</div>
-                              <div className="text-sm text-gray-500">{product.brand}</div>
-                            </div>
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800">
-                            {product.category}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                          {product.price}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm text-gray-900">
-                            <span className="font-medium">{product.currentStock}</span>
-                            <span className="text-gray-500"> / {product.maxStock}</span>
-                          </div>
-                          <div className="text-xs text-gray-500">Mín: {product.minStock}</div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <span
-                            className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${stockStatus.class}`}
-                          >
-                            {stockStatus.label}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="flex items-center space-x-2">
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => adjustStock(product.id, -1)}
-                              disabled={product.currentStock === 0}
-                            >
-                              -
-                            </Button>
-                            <Input
-                              type="number"
-                              min="0"
-                              value={product.currentStock}
-                              onChange={(e) => handleStockChange(product.id, e.target.value)}
-                              className="w-16 text-center text-sm"
-                            />
-                            <Button variant="outline" size="sm" onClick={() => adjustStock(product.id, 1)}>
-                              +
-                            </Button>
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{product.lastUpdated}</td>
-                      </tr>
-                    )
-                  })}
-                </tbody>
-              </table>
+          {filteredProducts.length === 0 && (
+            <div className="text-center py-8 text-gray-500">
+              No se encontraron productos que coincidan con tu búsqueda.
             </div>
-
-            {filteredProducts.length === 0 && (
-              <div className="text-center py-12">
-                <Package className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                <div className="text-gray-500">
-                  {searchTerm || filterCategory !== "all" || filterStatus !== "all"
-                    ? "No se encontraron productos que coincidan con los filtros aplicados."
-                    : "No hay productos disponibles."}
-                </div>
-              </div>
-            )}
-          </div>
+          )}
         </div>
       </main>
 
@@ -456,7 +221,6 @@ export default function StockManagement() {
       <footer className="bg-black text-white py-10">
         <div className="container mx-auto px-4">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
-            {/* Column 1 - Logo and contact */}
             <div className="space-y-4">
               <div className="bg-white p-2 inline-block">
                 <div className="flex flex-col items-center">
@@ -464,19 +228,11 @@ export default function StockManagement() {
                 </div>
               </div>
               <div className="space-y-2 text-sm">
-                <p className="flex items-center gap-2">
-                  <span>UCT</span>
-                </p>
-                <p className="flex items-center gap-2">
-                  <span>main.companies@gmail.com</span>
-                </p>
-                <p className="flex items-center gap-2">
-                  <span>+593 04 600-8100</span>
-                </p>
+                <p>UCT</p>
+                <p>main.companies@gmail.com</p>
+                <p>+593 04 593 600</p>
               </div>
             </div>
-
-            {/* Column 2 - Information */}
             <div>
               <h3 className="font-bold text-sm uppercase mb-4">INFORMACIÓN</h3>
               <ul className="space-y-2 text-sm">
@@ -512,8 +268,6 @@ export default function StockManagement() {
                 </li>
               </ul>
             </div>
-
-            {/* Column 3 - Customer Service */}
             <div>
               <h3 className="font-bold text-sm uppercase mb-4">SERVICIO AL CLIENTE</h3>
               <ul className="space-y-2 text-sm">
@@ -539,8 +293,6 @@ export default function StockManagement() {
                 </li>
               </ul>
             </div>
-
-            {/* Column 4 - My Account */}
             <div>
               <h3 className="font-bold text-sm uppercase mb-4">MI CUENTA</h3>
               <ul className="space-y-2 text-sm">
@@ -567,38 +319,42 @@ export default function StockManagement() {
               </ul>
             </div>
           </div>
-
           <hr className="my-8 border-gray-800" />
-
-          {/* Social media and newsletter */}
           <div className="flex flex-col md:flex-row justify-between items-center">
             <div className="mb-4 md:mb-0">
               <h3 className="font-bold text-sm mb-4">Síguenos</h3>
               <div className="flex space-x-4">
                 <Link href="#" className="hover:text-gray-300">
-                  <Facebook className="h-5 w-5" />
+                  <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M12 2C6.477 2 2 6.477 2 12c0 4.991 3.657 9.128 8.438 9.879V14.89h-2.54V12h2.54V9.797c0-2.506 1.492-3.89 3.777-3.89 1.094 0 2.238.195 2.238.195v2.46h-1.26c-1.243 0-1.63.771-1.63 1.562V12h2.773l-.443 2.89h-2.33v6.989C18.343 21.128 22 16.991 22 12c0-5.523-4.477-10-10-10z" />
+                  </svg>
                 </Link>
                 <Link href="#" className="hover:text-gray-300">
-                  <Twitter className="h-5 w-5" />
+                  <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M23 3a10.9 10.9 0 01-3.14 1.53 4.48 4.48 0 00-7.86 3v1A10.66 10.66 0 013 4s-4 9 5 13a11.64 11.64 0 01-7 2c9 5 20 0 20-11.5a4.5 4.5 0 00-.08-.83A7.72 7.72 0 0023 3z" />
+                  </svg>
                 </Link>
                 <Link href="#" className="hover:text-gray-300">
-                  <Instagram className="h-5 w-5" />
+                  <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z" />
+                  </svg>
                 </Link>
                 <Link href="#" className="hover:text-gray-300">
-                  <Youtube className="h-5 w-5" />
+                  <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M19.615 3.184c-3.604-.246-11.631-.245-15.23 0-3.897.266-4.356 2.62-4.385 8.816.029 6.185.484 8.549 4.385 8.816 3.6.245 11.626.246 15.23 0 3.897-.266 4.356-2.62 4.385-8.816-.029-6.185-.484-8.549-4.385-8.816zm-10.615 12.816v-8l8 4-8 4z" />
+                  </svg>
                 </Link>
               </div>
             </div>
-
             <div className="w-full md:w-auto">
-              <h3 className="font-bold text-sm mb-4">Boletín</h3>
+              <h3 className="font-bold text-sm mb-2">Boletín</h3>
               <div className="flex">
                 <Input
                   type="email"
                   placeholder="Introduzca su correo electrónico aquí..."
                   className="rounded-l bg-white text-black border-0 min-w-[250px]"
                 />
-                <Button className="bg-gray-700 hover:bg-gray-600 text-white rounded-r">Suscribirse</Button>
+                <Button className="bg-gray-700 hover:bg-gray-600 text-white rounded-r">Suscribirás</Button>
               </div>
             </div>
           </div>

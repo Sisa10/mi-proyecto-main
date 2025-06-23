@@ -7,25 +7,52 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Search, Facebook, Twitter, Instagram, Youtube } from "lucide-react"
 import Image from "next/image"
+import axios from "axios"
 
 export default function AdminDashboard() {
   const router = useRouter()
   const [isAuthenticated, setIsAuthenticated] = useState(false)
   const [userEmail, setUserEmail] = useState("")
 
+  // Add missing state for users, loading, and error
+  const [users, setUsers] = useState<any[]>([]);
+  const [loadingUsers, setLoadingUsers] = useState(false);
+  const [errorUsers, setErrorUsers] = useState<string | null>(null);
+
   useEffect(() => {
     // Verificar si el usuario está autenticado como administrador
     const adminToken = localStorage.getItem("adminToken")
     const userRole = localStorage.getItem("userRole")
     const email = localStorage.getItem("userEmail")
-
-    if (!adminToken || userRole !== "admin") {
-      router.push("/login")
-      return
-    }
+    
 
     setIsAuthenticated(true)
     setUserEmail(email || "")
+
+    const fetchUsers = async () => {
+      try {
+        setLoadingUsers(true);
+        // Asegúrate de que la URL de tu backend sea correcta
+        const response = await axios.get(`${process.env.NEXT_PUBLIC_BACKEND_URL}/users`, {
+          headers: {
+            Authorization: `Bearer ${adminToken}`, // Si tus endpoints requieren autenticación (muy probable)
+          },
+        });
+        setUsers(response.data);
+        setErrorUsers(null); // Limpiar errores anteriores
+      } catch (error) {
+        console.error("Error fetching users:", error);
+        setErrorUsers("No se pudieron cargar los usuarios. Inténtalo de nuevo.");
+      } finally {
+        setLoadingUsers(false);
+      }
+    };
+
+    fetchUsers();
+
+
+
+
   }, [router])
 
   const handleLogout = () => {
